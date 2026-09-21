@@ -1,0 +1,44 @@
+name: Build Wan ComfyUI runtime
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Clone exact workflow commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" source
+          cd source
+          git fetch origin "$GITHUB_SHA" --depth 1
+          git checkout --detach "$GITHUB_SHA"
+
+      - name: Verify and expand sealed context
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          echo "a61415a6a11c156a0af29cfd368da336da7945fc0a9b741be0a457238a2b69d4  wan-custom-runtime-image.zip" | sha256sum -c -
+          mkdir context
+          unzip -q wan-custom-runtime-image.zip -d context
+          test "$(python3 -c 'import json; print(json.load(open("context/CONTEXT-MANIFEST.json"))["context_sha256"])')" = "8366699a05b38d7d53a208f782d52e9a3fa5fc03c9881167e68d1348e4acd1a7"
+
+      - name: Build and publish exact runtime
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          owner="$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          image="ghcr.io/$owner/wan22-comfyui-runtime:ctx-8366699a05b38d7d"
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker build --platform linux/amd64 --label "org.opencontainers.image.revision=$GITHUB_SHA" -t "$image" source/context
+          docker push "$image"
+          docker buildx imagetools inspect "$image" >> "$GITHUB_STEP_SUMMARY"
