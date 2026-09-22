@@ -25,10 +25,10 @@ jobs:
         run: |
           set -euo pipefail
           cd source
-          echo "a61415a6a11c156a0af29cfd368da336da7945fc0a9b741be0a457238a2b69d4  wan-custom-runtime-image.zip" | sha256sum -c -
+          echo "8b4eaae4ac9b3985e58e26d5caf7e01a9f1402ba420bd0de3f44d337b9f06fa4  wan-custom-runtime-image.zip" | sha256sum -c -
           mkdir context
           unzip -q wan-custom-runtime-image.zip -d context
-          test "$(python3 -c 'import json; print(json.load(open("context/CONTEXT-MANIFEST.json"))["context_sha256"])')" = "8366699a05b38d7d53a208f782d52e9a3fa5fc03c9881167e68d1348e4acd1a7"
+          test "$(python3 -c 'import json; print(json.load(open("context/CONTEXT-MANIFEST.json"))["context_sha256"])')" = "a8d08016bd68a316d2356ce852f047c59069d77829ad3a7dd11aa01045d13186"
 
       - name: Build and publish exact runtime
         shell: bash
@@ -37,8 +37,9 @@ jobs:
         run: |
           set -euo pipefail
           owner="$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
-          image="ghcr.io/$owner/wan22-comfyui-runtime:ctx-8366699a05b38d7d"
+          image="ghcr.io/$owner/wan22-comfyui-runtime:ctx-a8d08016bd68a316"
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           docker build --platform linux/amd64 --label "org.opencontainers.image.revision=$GITHUB_SHA" -t "$image" source/context
           docker push "$image"
           docker buildx imagetools inspect "$image" >> "$GITHUB_STEP_SUMMARY"
+
